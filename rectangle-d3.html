@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script>
+        function doSVG() {
+            const svgContainer = d3.select("body").append("svg")
+                                                  .attr("width", 800)
+                                                  .attr("height", 800)
+            const rectangle = svgContainer.append("rect")
+                                          .attr("width", 50)
+                                          .attr("height", 140)
+        }
+    </script>
+</head>
+
+<body onload="doSVG()">
+</body>
+
+</html>
+

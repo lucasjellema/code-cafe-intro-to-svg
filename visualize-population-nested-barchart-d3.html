@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style type="text/css">
+        .clickable:hover {
+            cursor: pointer;
+        }
+    </style>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script>
+        let colors = ["red", "green", "gray", "yellow", "purple", "blue", "pink", "maroon", "orange", "silver", "lime"]
+        const populationDataURL = "https://raw.githubusercontent.com/holtzy/data_to_viz/master/Example_dataset/11_SevCatOneNumNestedOneObsPerGroup.csv"
+        let populationData
+        const levels = ["world", "region", "subregion", "key"] // key == country
+        let currentLevel = 0
+        const canvasWidth = 1500
+
+        function drillDown(key) {
+            if (currentLevel ==2) { drillUp(key) } else {
+                populationAtLevel(++currentLevel, key)
+            }
+        }
+
+        function drillUp(drilledKey) {
+            let key = null
+            if (currentLevel > 1) {
+                const filterByColumn = levels[currentLevel+1]
+                const currentRow = populationData.filter((row) => row[filterByColumn] == drilledKey)[0]
+                key = currentRow[levels[currentLevel-1]]
+            }
+            currentLevel--
+            populationAtLevel(currentLevel, key)
+        }
+
+        function populationAtLevel(level = 0, levelIdentifier = null) {
+            const filterByColumn = levels[level]
+            const groupByColumn = levels[level + 1]
+            const countBy = populationData.filter((row) => levelIdentifier == null || row[filterByColumn] == levelIdentifier)
+                .reduce((aggregate, row) => {
+                    if (row[groupByColumn] != null && row[groupByColumn].length > 0) {
+                        if (!(aggregate.hasOwnProperty(row[groupByColumn]))) { aggregate[row[groupByColumn]] = 0 };
+                        aggregate[row[groupByColumn]] += parseInt(row['value'])
+                    }
+                    return aggregate
+                }, {})
+            const totalPopulationCount = Object.keys(countBy).reduce((sum, key) => sum += countBy[key], 0)
+            drawBarChart(countBy, totalPopulationCount)
+        }
+
+        function drawBarChart(dataObject, totalCount) {
+            const svgContainer = d3.select("#svgContainer")
+            svgContainer.selectAll("*").remove()
+            const currentBarWidth = 0.9 * (canvasWidth / Object.keys(dataObject).length)
+            Object.keys(dataObject).forEach((key, index) => {
+                const bar = svgContainer
+                    .append("rect")
+                    .attr("width", currentBarWidth)
+                    .attr("height", canvasWidth * dataObject[key] / totalCount)
+                    .attr("style", `fill:${colors[index % colors.length]}`)
+                    .attr("class", "clickable")
+                    .attr("transform", `translate(${index * currentBarWidth + 5}, 30 )`)
+                    .on("click", (event) => drillDown(key))
+                    .on("mouseover", () => document.getElementById("context").innerText = `Population of ${key} is ${dataObject[key]}`)
+                    .on("mouseout", () => document.getElementById("context").innerText = `Move over bars to inspect population size`)
+                svgContainer
+                    .append("text")
+                    .text(key)
+                    .attr("y", 20)
+                    .attr("x", index * currentBarWidth + 0.5 * currentBarWidth)
+                    .attr("text-anchor", "middle")
+                    .attr("style", "font-size:11")
+                    .on("click", (event) => drillUp(key))               
+            })
+        }
+
+        function doSVG() {
+            d3.csv(populationDataURL)
+                .then(function (data) {
+                    populationData = data
+                    populationAtLevel(0, null)
+                });
+        }
+
+    </script>
+</head>
+
+<body onload="doSVG()">
+    <div>
+        <h2><span id="title">Population of the World</span> </h2>
+        <span id="context"></span>
+    </div>
+    <div>
+        <svg id="svgContainer" width="1500" height="800">
+        </svg>
+    </div>
+</body>
+
+</html>

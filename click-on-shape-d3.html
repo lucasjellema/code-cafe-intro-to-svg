@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script>
+        let colors= ["red","green","gray","yellow","purple","blue","pink","maroon","orange","silver"]
+        let colorIndex=0
+        function doSVG() {
+            const svgContainer = d3.select("#svgContainer")
+            svgContainer.selectAll("*").remove()
+            const rectangle = svgContainer.append("rect")
+                                          .attr("width", 250)
+                                          .attr("height", 440)
+                                          .attr("style", "fill:red")
+                                          .on("click", () => { 
+                                              rectangle.attr("style"
+                                                , `fill:${colors[++colorIndex % colors.length]}`)                                              
+                                            })      
+        }
+    </script>
+</head>
+
+<body onload="doSVG()">
+    <svg id="svgContainer" width="800" height="800">        
+    </svg>
+</body>
+
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script>
+        let color="red"
+        let scaleFactor=1
+        function doSVG() {
+            const svgContainer = d3.select("#svgContainer")
+            svgContainer.selectAll("*").remove()
+            const rectangle = svgContainer.append("rect")
+                                          .attr("width", 50)
+                                          .attr("height", 140)
+                                          .attr("style", `fill:${color}`)
+                                          .attr("transform", `scale(${scaleFactor})`)           
+        }
+
+        function initialize() {
+            document.getElementById("sizeSlider").addEventListener("change", (e) => { scaleFactor= e.target.value ;doSVG() })                              
+            document.getElementById("colorPicker").addEventListener("change", (e) => { color = e.target.value; doSVG() })                              
+            doSVG()
+        }
+    </script>
+</head>
+
+<body onload="initialize()">
+    <div>
+    Size:
+    <input id="sizeSlider" type="range" min="0" max="10" step="0.2" value="1" />
+    Color:
+    <input id="colorPicker" type="color"  />
+    </div>
+    <svg id="svgContainer" width="800" height="800">        
+    </svg>
+</body>
+
+</html>
+

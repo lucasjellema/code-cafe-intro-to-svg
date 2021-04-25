@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style type="text/css">
+        .colorPicker:hover {
+            stroke-width: 4px;
+            stroke: #333333 !important;
+            cursor: pointer;
+        }
+    </style>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script>
+        let colors = ["red", "green", "gray", "yellow", "purple", "blue", "pink", "maroon", "orange", "silver", "lime"]        
+        function doSVG() {
+            const svgContainer = d3.select("#svgContainer")
+            const bigOne = svgContainer.selectAll('.bigOne')
+                .data(["red"])
+                .enter()
+                .append("rect")
+                .attr("width", colors.length * 60)
+                .attr("height", colors.length * 60)
+                .attr("style", "fill:red")
+            svgContainer.selectAll('.colorSelector')
+                .data(colors)  // merge data set colors with matching set of rectangles
+                .enter().append('rect')
+                .attr("width", 50)
+                .attr("height", 50)
+                .attr("transform", (d, index) => `translate(${index * 60 + 5}, ${20 + (colors.length) * 60} )`)
+                .attr("style", (d) => `fill:${d}`)
+                .attr("class", "colorPicker")
+                .on("click", (d, color) => { bigOne.attr("style", `fill:${color}` ) })
+        }
+
+    </script>
+</head>
+
+<body onload="doSVG()">
+    <svg id="svgContainer" width="800" height="800">
+    </svg>
+</body>
+
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script>
+        let colors = ["red", "green", "gray", "yellow", "purple", "blue", "pink", "maroon", "orange", "silver", "lime"]
+        const populationDataURL = "https://raw.githubusercontent.com/holtzy/data_to_viz/master/Example_dataset/11_SevCatOneNumNestedOneObsPerGroup.csv"
+        let populationData
+        const barWidth = 100
+
+        function populationByRegion() {
+            const countByRegion = populationData.reduce((aggregate, row) => {
+                if (row['region'] != null && row['region'].length > 0) {
+                    if (!(aggregate.hasOwnProperty(row['region']))) { aggregate[row['region']] = 0 };
+                    aggregate[row['region']] += parseInt(row['value'])
+                }
+                return aggregate
+            }, {})
+            const totalPopulationCount = Object.keys(countByRegion).reduce((sum, key) => sum += countByRegion[key], 0)
+            drawBarChart(countByRegion, totalPopulationCount)
+        }
+        function drawBarChart(dataObject, totalCount) {
+            const svgContainer = d3.select("#svgContainer")
+            svgContainer.selectAll("*").remove()
+            Object.keys(dataObject).forEach((key, index) => {
+                const bar = svgContainer
+                    .append("rect")
+                    .attr("width", barWidth)
+                    .attr("height", 100)                    
+                    .attr("style", `fill:${colors[index]}`)
+                    .attr("transform", `translate(${index * barWidth + 5}, 30 )`)
+                    .on("mouseover", () => document.getElementById("context").innerText = `Population of ${key} is ${dataObject[key]}`)
+                    .on("mouseout", () => document.getElementById("context").innerText = `Total World Population is ${totalCount}`)
+                    .transition()
+                    .ease(d3.easeLinear)
+                    .duration(2000)
+                    .attr("height",600 * dataObject[key] / totalCount)
+                svgContainer
+                    .append("text")
+                    .text(key)
+                    .attr("y", 20)
+                    .attr("x", index * barWidth + 0.5 * barWidth)
+                    .attr("text-anchor", "middle")
+            })
+        }
+
+        function doSVG() {
+            d3.csv(populationDataURL)
+            .then(function (data) {
+                populationData = data
+                populationByRegion()
+            });
+        }
+
+    </script>
+</head>
+
+<body onload="doSVG()">
+    <div>
+        <h2><span id="title">Population of the World</span> </h2>
+        <span id="context"></span>
+    </div>
+    <div>
+        <svg id="svgContainer" width="800" height="800">
+        </svg>
+    </div>
+</body>
+
+</html>
