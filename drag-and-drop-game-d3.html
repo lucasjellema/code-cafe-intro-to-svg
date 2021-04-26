@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script>
+        let player
+        let playerRadius = 30
+        let numberOfTargets = 5
+        const targetWidth = 8
+        let score = 0;
+        let svg
+        const targets = []
+        let starttime
+        let endtime
+        let gameOver = false
+        let clockUpdater
+        function dissolveTargets() {
+            const target = svg.selectAll(".target")
+                .data(targets)
+            target
+                .transition()
+                .duration(3000)
+                .attr("transform", function (d) { return `translate(${d.x / 2},${d.y - 200}) scale(${d.size / 100})` })
+        }
+
+        const randomInteger = (scale) => Math.round(Math.random() * scale)
+        function addTargets() {
+            for (let i = 0; i < numberOfTargets; i++) {
+                targets.push({ id: i, size: 1 + randomInteger(10), x: randomInteger(900), y: randomInteger(600) })
+            }
+            svg.selectAll(".target")
+                .data(targets, (d) => d.id)
+                .enter()
+                .append("rect")
+                .attr("width", targetWidth)
+                .attr("height", targetWidth)
+                .attr("class", "target")
+                .attr("transform", function (d) { return `translate(${d.x},${d.y}) scale(${d.size})` })
+                .attr("style", "fill:blue")
+            setTimeout(dissolveTargets, 15000)
+        }
+
+        function showGameOver() {
+            svg.append("text")
+                    .attr("y", 400)
+                    .attr("x", 200)
+                    .attr("class", "score")
+                    .attr("style","font-family:Helvetica;font-size:12px; fill:green")
+                    .text("GAME OVER")
+                    .transition()
+                    .duration(5000)
+                    .attr("style","font-family:Helvetica;font-size:130px; fill:orange")
+                    
+        }
+
+        function doSVG() {
+            svg = d3.select("#svgContainer")
+            addTargets()
+            player = svg.append("rect")
+                .attr("width", playerRadius)
+                .attr("height", playerRadius)
+                .attr('x', 100 + randomInteger(900))
+                .attr('y', 100 + randomInteger(600))
+                .attr("style", `fill:red`)
+            dragHandler(player);
+            showScore()
+            starttime = Date.now()
+            showClock()
+            clockUpdater = setInterval(showClock, 100)
+        }
+
+        function checkPlayerOnTarget(x, y) {
+            // if player touches on a target then dissolve that target and add to score
+            const collidedTargets = []
+            let scored = false
+            targets.forEach((target, index) => {
+                let targetSize = targetWidth * target.size
+                if (Math.abs(x - target.x) < (targetWidth * target.size + playerRadius) / 2) {
+                    if (Math.abs(y - target.y) < (targetWidth * target.size + playerRadius) / 2) {
+                        collidedTargets.push(target)
+                        scored = true
+                        targets.splice(index, 1)
+                    }
+                }
+            })
+            score += collidedTargets.length
+            showScore()
+            if (targets.length ==0) {
+                gameOver = true
+                endtime = Date.now()
+                clearInterval(clockUpdater)
+                showGameOver()
+            }
+            showClock()
+            // dissolve the touched targets
+            svg.selectAll(".target")
+                .data(collidedTargets, (d) => d.id)
+
+                .transition()
+                .duration(1000)
+                .attr("transform", function (d) { return `scale(${d.size / 100})` })
+                .attr("style", "fill:yellow")
+        }
+
+        const dragHandler = d3.drag()
+            .on("start", function (event) { d3.select(this).attr("stroke", "black") })
+            .on("drag", function (event) { d3.select(this).attr("x", event.x).attr("y", event.y); if (!gameOver) checkPlayerOnTarget(event.x, event.y) })
+            .on("end", function (event) { d3.select(this).attr("stroke", null) })
+
+        const showScore = () => {
+            const scoreboard =
+                svg.selectAll(".score")
+                    .data([score])
+            scoreboard
+                .enter()
+                    .append("text")
+                    .attr("y", 40)
+                    .attr("x", 800)
+                    .attr("class", "score")
+                    .attr("style","font-family:Helvetica;font-size:32px; fill:orange")
+                .merge(scoreboard)
+                    .text((d) => `Score: ${d}`)
+        }
+        const showClock = () => {
+            const time = (endtime!=null)?endtime:Date.now()
+            const timeElapsed =  Math.round(( time - starttime)/ 100) /10
+            const clock =
+                svg.selectAll(".clock")
+                    .data([timeElapsed])
+            clock
+                .enter()
+                    .append("text")
+                    .attr("y", 70)
+                    .attr("x", 700)
+                    .attr("class", "clock")
+                    .attr("style","font-family:Helvetica;font-size:28px; fill:blue")
+                .merge(clock)
+                    .text((d) => `Time Elapsed: ${d}`)
+        }
+
+        </script>
+</head>
+
+<body onload="doSVG()">
+    <svg id="svgContainer" width="1000" height="1000">
+    </svg>
+</body>
+
+</html>
