@@ -5,9 +5,6 @@
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <script>
         let player
-        let playerRadius = 30
-        let numberOfTargets = 5
-        const targetWidth = 8
         let score = 0;
         let svg
         const targets = []
@@ -15,6 +12,14 @@
         let endtime
         let gameOver = false
         let clockUpdater
+
+        // control difficulty of game with these settings
+        // TODO: moving targets!
+        // TODO: add poison pills (upon touch 0- game lost!) 
+        let playerRadius = 30    
+        let numberOfTargets = 5
+        const targetWidth = 8
+
         function dissolveTargets() {
             const target = svg.selectAll(".target")
                 .data(targets)
@@ -57,6 +62,13 @@
         function doSVG() {
             svg = d3.select("#svgContainer")
             addTargets()
+            showScore()
+            starttime = Date.now()
+            showClock()
+            clockUpdater = setInterval(showClock, 100)
+        }
+
+        function preparePlayer() {
             player = svg.append("rect")
                 .attr("width", playerRadius)
                 .attr("height", playerRadius)
@@ -64,11 +76,13 @@
                 .attr('y', 100 + randomInteger(600))
                 .attr("style", `fill:red`)
             dragHandler(player);
-            showScore()
-            starttime = Date.now()
-            showClock()
-            clockUpdater = setInterval(showClock, 100)
         }
+
+        const dragHandler = d3.drag()
+            .on("start", function (event) { d3.select(this).attr("stroke", "black") })
+            .on("drag", function (event) { d3.select(this).attr("x", event.x).attr("y", event.y); if (!gameOver) checkPlayerOnTarget(event.x, event.y) })
+            .on("end", function (event) { d3.select(this).attr("stroke", null) })
+
 
         function checkPlayerOnTarget(x, y) {
             // if player touches on a target then dissolve that target and add to score
@@ -84,15 +98,6 @@
                     }
                 }
             })
-            score += collidedTargets.length
-            showScore()
-            if (targets.length ==0) {
-                gameOver = true
-                endtime = Date.now()
-                clearInterval(clockUpdater)
-                showGameOver()
-            }
-            showClock()
             // dissolve the touched targets
             svg.selectAll(".target")
                 .data(collidedTargets, (d) => d.id)
@@ -101,12 +106,17 @@
                 .duration(1000)
                 .attr("transform", function (d) { return `scale(${d.size / 100})` })
                 .attr("style", "fill:yellow")
-        }
+            score += collidedTargets.length
+            showScore()
 
-        const dragHandler = d3.drag()
-            .on("start", function (event) { d3.select(this).attr("stroke", "black") })
-            .on("drag", function (event) { d3.select(this).attr("x", event.x).attr("y", event.y); if (!gameOver) checkPlayerOnTarget(event.x, event.y) })
-            .on("end", function (event) { d3.select(this).attr("stroke", null) })
+            if (targets.length ==0) {
+                gameOver = true
+                endtime = Date.now()
+                clearInterval(clockUpdater)
+                showGameOver()
+            }
+            showClock()
+        }
 
         const showScore = () => {
             const scoreboard =
