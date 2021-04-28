@@ -15,15 +15,33 @@
             dragHandler(circle);
         }
 
-        var dragHandler = d3.drag()
+        const dragHandler = d3.drag()
             .on("start",function (event) { d3.select(this).attr("stroke", "black")})
-            .on("drag", function (event) { d3.select(this).attr("cx", event.x).attr("cy", event.y) })
+            .on("drag", function (event) { d3.select(this).attr("cx", event.x).attr("cy", event.y) ; showPosition(event.x, event.y)})
             .on("end",  function (event) { d3.select(this).attr("stroke", null)})
+
+        function showPosition(x,y)  {
+            const positionIndicator = 
+            d3.select("#svgContainer")
+              .selectAll(".position")
+
+            positionIndicator  
+              .data([{x,y}])
+                .enter()
+                    .append("text")
+                    .attr("y", 40)
+                    .attr("x", 800)
+                    .attr("class", "position")
+                    .attr("style","font-family:Lucida Sans;font-size:32px; fill:green")
+                .merge(positionIndicator)
+                    .text((d) => `( ${d.x} , ${d.y} )`)
+
+        }    
     </script>
 </head>
 
 <body onload="doSVG()">
-    <svg id="svgContainer" width="100" height="100">
+    <svg id="svgContainer" width="1000" height="1000">
     </svg>
 </body>
 
