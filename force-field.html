@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script>
+        const w = 1000
+        const h = 800
+        const forbiddenZone = { x: 250, y: 420, width: 650, height: 40 }
+        const blackhole = { x: 100, y: 150, width: 70, height: 300 }
+        const nodePadding = 3
+        const colors = ["red", "yellow", "green", "blue", "violet", "lime"]
+        // create an array of node_data - calculate random position, radius and color for each node_data element
+        const node_data = [...Array(20)]
+            .map(() => ({
+                x: w * Math.random(),
+                y: h * Math.random(),
+                r: Math.max(3, d3.randomNormal(8, 5)()),
+                color: colors[Math.round(colors.length * Math.random())]
+            }))
+
+        // position four nodes on fixed locations - just to show it can be done    
+        const fixedNodes = [2, 5, 10, 17]
+        fixedNodes.forEach((nodeIndex) => {
+            node_data[nodeIndex].fx = node_data[nodeIndex].x
+            node_data[nodeIndex].fy = node_data[nodeIndex].y
+        })
+
+        function doSVG() {
+            const svg = d3.select("body").append("svg")
+                .attr("width", w)
+                .attr("height", h)
+            const rectangle = svg
+                .append("rect")
+                .attr("width", forbiddenZone.width)
+                .attr("height", forbiddenZone.height)
+                .attr("fill", "red")
+                .attr("transform", `translate(${forbiddenZone.x}, ${forbiddenZone.y})   `)
+
+            const blackholeRectangle = svg
+                .append("rect")
+                .attr("width", blackhole.width)
+                .attr("height", blackhole.height)
+                .attr("fill", "white")
+                .attr("stroke", "red")
+                .attr("transform", `translate(${blackhole.x}, ${blackhole.y})   `)
+
+
+
+            const blipElements = svg.selectAll(".blip")
+                .data(node_data)
+                .enter()
+                .append("g")
+                .attr("transform", (d) => `translate(${d.x}, ${d.y})`)
+                .attr("class", "blip draggable-group")
+
+            // configure each blip
+            blipElements.each(function (d,index) {
+                const blip = d3.select(this);
+                blip
+                   .append("circle")
+                      .attr("cx", d => 0)
+                      .attr("cy", d => 0)
+                      .attr("r", d => d.r ?? 8)
+                      .attr("fill", d => d.color)
+                blip.append("text")
+                      .text( `${index}`)
+                      .attr("fill", "black")
+                      .attr("x", d => d.r)
+                      .attr("y", 0)
+                      .attr("text-anchor", "middle")
+                             .attr("alignment-baseline", "before-edge")
+            })
+
+            // create a force simulation for the node_data elements - acting on the x,y and radius of each node_data element
+            // three forces - x and y to draw node_data to x,y center; collide to prevent the node_data from overlapping (catering for their radius)   
+            sim = d3.forceSimulation(node_data)
+                .force("forbidden-zone", () => { // if a blip is in the hidden zone, then shoot it right back 
+                    node_data.forEach(node => {
+                        if ((node.x + node.r + nodePadding> forbiddenZone.x && node.x - node.r < forbiddenZone.x + forbiddenZone.width)
+                            &&
+                            (node.y + node.r + nodePadding > forbiddenZone.y && node.y - node.r < forbiddenZone.y + forbiddenZone.height)
+                        ) {
+                            //console.log(`${JSON.stringify(node)}`)
+                            node.x = 1
+                            node.y = 1
+                        }
+                    })
+                })
+                .force("blackhole", () => { // if a blip is in the black hole, it may not get out of there
+                    node_data.forEach(node => {
+                        if ((node.x + node.r > blackhole.x
+                            && node.x - node.r < blackhole.x + blackhole.width + nodePadding
+                        )
+                            &&
+                            (node.y + node.r > blackhole.y
+                                && node.y - node.r < blackhole.y + blackhole.height + nodePadding
+                            )
+
+                        ) {
+                            if (!node.inBlackhole) console.log(`${node.index} in blackhole `)
+                            node.inBlackhole = true
+                        }
+                        if (node.inBlackhole) {
+                            node.xYanked = node.x
+                            node.yYanked = node.y
+                            if (node.x - node.r < blackhole.x) { 
+                                node.x = blackhole.x + node.r + nodePadding 
+                            }
+                            else if (node.x + node.r + nodePadding > blackhole.x + blackhole.width) { 
+                                node.x = blackhole.x + blackhole.width - node.r - nodePadding 
+                                node.xYanked = node.x
+                            } 
+                            if (node.y - node.r - nodePadding < blackhole.y) {
+                                node.y = blackhole.y + node.r + nodePadding
+                                node.yYanked = node.y
+                            }
+                            else if (node.y + node.r + nodePadding > blackhole.y + blackhole.height) {
+                                node.y = blackhole.y + blackhole.height - node.r - nodePadding
+                                node.yYanked = node.y
+                            }    
+                            console.log(`yank back ${node.index} to x = ${node.x} y = ${node.y}`)
+                        }
+
+                    })
+                })
+                .force("x", d3.forceX(w / 2))
+                .force("y", d3.forceY(h / 2))
+                .force("collide", d3.forceCollide().radius(d => d.r + nodePadding))
+                .force("charge", d3.forceManyBody().strength(-25))
+             
+            // update each node upon simulation tick
+            sim.on("tick", () => {
+                // visit all blip elements whose data elements have now been updated by the simulation
+                // x, y and vx, vy may have been reassigned 
+                blipElements
+                .attr("transform", d => `translate(${d.xYanked ?? d.x}, ${d.y?? d.y})   `)
+            });
+        }
+    </script>
+</head>
+
+<body onload="doSVG()">
+</body>
+
+</html>
