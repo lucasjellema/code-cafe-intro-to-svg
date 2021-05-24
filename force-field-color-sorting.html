@@ -4,27 +4,24 @@
 <head>
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <script>
-        const w = 1000
+        const w = 1200
         const h = 800
         const forbiddenZone = { x: 250, y: 420, width: 650, height: 40 }
-        const blackhole = { x: 100, y: 150, width: 70, height: 300 }
+        const blackhole = { x: 50, y: 250, width: 40, height: 300 }
         const nodePadding = 3
-        const colors = ["red", "yellow", "green", "blue", "violet", "lime"]
+        const colors = ["red", "yellow", "green", "blue", "violet", "lime","silver"]
         // create an array of node_data - calculate random position, radius and color for each node_data element
-        const node_data = [...Array(20)]
+        const node_data = [...Array(80)]
             .map(() => ({
                 x: w * Math.random(),
                 y: h * Math.random(),
                 r: Math.max(3, d3.randomNormal(8, 5)()),
-                color: colors[Math.round(colors.length * Math.random())]
+                color: colors[Math.round(colors.length* Math.random())]
             }))
-
-        // position four nodes on fixed locations - just to show it can be done    
-        const fixedNodes = [2, 5, 10, 17]
-        fixedNodes.forEach((nodeIndex) => {
-            node_data[nodeIndex].fx = node_data[nodeIndex].x
-            node_data[nodeIndex].fy = node_data[nodeIndex].y
-        })
+        const attractionCenters = {}    
+        for (let i=0;i<colors.length;i++) {
+            attractionCenters[colors[i]] = {x: Math.round(i*(w/colors.length)+100), y: Math.round(h/3 + i*0.5*h/colors.length)}
+        }
 
         function doSVG() {
             const svg = d3.select("body").append("svg")
@@ -119,15 +116,15 @@
                                 node.y = blackhole.y + blackhole.height - node.r - nodePadding
                                 node.yYanked = node.y
                             }    
-                            console.log(`yank back ${node.index} to x = ${node.x} y = ${node.y}`)
                         }
 
                     })
                 })
-             //   .force("x", d3.forceX(w / 2))
-              //  .force("y", d3.forceY(h / 2))
-               .force("collide", d3.forceCollide().radius(d => d.r + nodePadding))
-                .force("charge", d3.forceManyBody().strength(25))
+                 .force("x", d3.forceX( d => attractionCenters[d.color??colors[0]].x
+                ))
+                 .force("y", d3.forceY( d => attractionCenters[d.color??colors[0]].y))
+                .force("collide", d3.forceCollide().radius(d => d.r + nodePadding))
+                .force("charge", d3.forceManyBody().strength(-25))
              
             // update each node upon simulation tick
             sim.on("tick", () => {

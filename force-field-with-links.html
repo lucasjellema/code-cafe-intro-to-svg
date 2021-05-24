@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="https://unpkg.com/d3-force-magnetic"></script>
+    <script>
+        const w = 1000
+        const h = 800
+        const nodePadding = 3
+        const colors = ["red", "yellow", "green", "blue"]
+        // create an array of node_data - calculate random position, radius and color for each node_data element
+        const node_data = [...Array(80)]
+            .map((entry, index) => ({
+                id: index,
+                x: w * Math.random(),
+                y: h * Math.random(),
+                r: Math.max(3, d3.randomNormal(8, 5)()),
+                color: colors[Math.round(colors.length * Math.random())]
+            }))
+
+        let links = []
+        node_data.forEach((node, index) => {
+            for (let i = 0; i < node_data.length; i++) {
+                if (node_data[i].color == node.color) {
+                links.push({
+                    source: index
+                    , target: node_data[i].id
+                    , attraction: 10000
+                })
+            }
+            }
+        })
+
+        function doSVG() {
+            const svg = d3.select("body").append("svg")
+                .attr("width", w)
+                .attr("height", h)
+           
+            const blipElements = svg.selectAll(".blip")
+                .data(node_data)
+                .enter()
+                .append("g")
+                .attr("transform", (d) => `translate(${d.x}, ${d.y})`)
+                .attr("class", "blip draggable-group")
+
+            // configure each blip
+            blipElements.each(function (d, index) {
+                const blip = d3.select(this);
+                blip
+                    .append("circle")
+                    .attr("cx", d => 0)
+                    .attr("cy", d => 0)
+                    .attr("r", d => d.r ?? 8)
+                    .attr("fill", d => d.color)
+            })
+
+            // create a force simulation for the node_data elements - acting on the x,y and radius of each node_data element
+            // three forces - x and y to draw node_data to x,y center; collide to prevent the node_data from overlapping (catering for their radius)   
+            sim = d3.forceSimulation(node_data)
+                .force("x", d3.forceX(w / 2))
+                .force("y", d3.forceY(h / 2))
+                .force("collide", d3.forceCollide().radius(d => d.r + nodePadding))
+                .force("mutual-interaction", d3.forceMagnetic()
+                    .id(d => d.id)
+                    .charge(node => colors.indexOf(node.color))
+                    .strength(link => {
+                        return link.attraction || 0.1
+                    }
+                    )
+                    .links(links)
+                    .polarity((charge1, charge2) => charge1 == charge2)
+
+                )
+
+                .force("charge", d3.forceManyBody().strength(-25))
+            let ticks = 0
+
+            // update each node upon simulation tick
+            sim.on("tick", () => {
+                // visit all blip elements whose data elements have now been updated by the simulation
+                // x, y and vx, vy may have been reassigned 
+                blipElements
+                    .attr("transform", d => `translate(${d.xYanked ?? d.x}, ${d.y ?? d.y})   `)
+                ticks++
+                if (ticks > 2250) { sim.stop() }
+            });
+        }
+    </script>
+</head>
+
+<body onload="doSVG()">
+</body>
+
+</html>

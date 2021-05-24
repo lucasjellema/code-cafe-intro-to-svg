@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script>
+        const w = 600
+        const h = 400
+        const nodePadding = 3
+        const colors = ["red", "yellow", "green", "blue", "violet", "lime"]
+        const centerZone = { x: 250, y: 150, width: 100, height: 100 }
+        // create an array of node_data - calculate random position, radius and color for each node_data element
+        const node_data = [...Array(60)]
+            .map(() => ({
+                x: w * Math.random(),
+                y: h * Math.random(),
+                r: Math.max(3, d3.randomNormal(8, 5)()),
+                color: colors[Math.round(colors.length * Math.random())]
+            }))
+
+        function doSVG() {
+            const svg = d3.select("body").append("svg")
+                .attr("width", w)
+                .attr("height", h)
+            const rectangle = svg
+                .append("rect")
+                .attr("width", centerZone.width)
+                .attr("height", centerZone.height)
+                .attr("fill", "red")
+                .attr("transform", `translate(${centerZone.x}, ${centerZone.y})   `)
+            const blipElements = svg.selectAll(".blip")
+                .data(node_data)
+                .enter()
+                .append("circle")
+                .attr("cx", d => 0)
+                .attr("cy", d => 0)
+                .attr("r", d => d.r ?? 8)
+                .attr("fill", d => d.color)
+                .attr("transform", (d) => `translate(${d.x}, ${d.y})`)
+
+            // create a force simulation for the node_data elements - acting on the x,y and radius of each node_data element
+            // three forces - x and y to draw node_data to x,y center; collide to prevent the node_data from overlapping 
+            sim = d3.forceSimulation(node_data)
+                .force("center-zone", () => { // if a blip is in the center zone, then shoot it right back 
+                    node_data.forEach(node => {
+                        if ((node.x + node.r + nodePadding > centerZone.x && node.x - node.r < centerZone.x + centerZone.width)
+                            &&
+                            (node.y + node.r + nodePadding > centerZone.y && node.y - node.r < centerZone.y + centerZone.height)
+                        ) {
+                            if (node.x + node.r + nodePadding > centerZone.x && node.x - node.r < centerZone.x + centerZone.width) {
+                                // x needs correcting                                
+                                if (node.x + node.r + nodePadding < centerZone.x + 0.5 * centerZone.width) { node.x = centerZone.x - node.r - nodePadding }
+                                else { node.x = centerZone.x + centerZone.width + node.r + nodePadding }
+                            }
+                            if (node.y + node.r + nodePadding > centerZone.y && node.y - node.r < centerZone.y + centerZone.height) {
+                                // y needs correcting                                
+                                if (node.y + node.r + nodePadding < centerZone.y + 0.5 * centerZone.height) { node.y = centerZone.y - node.r - nodePadding }
+                                else { node.y = centerZone.y + centerZone.height + node.r + nodePadding }
+                            }
+                        }
+                    })
+                })
+                .force("x", d3.forceX(w / 2))
+                .force("y", d3.forceY(h / 2))
+                .force("collide", d3.forceCollide().radius(d => d.r + nodePadding))
+
+            // update each node upon simulation tick
+            sim.on("tick", () => {
+                // visit all blip elements whose data elements have now been updated by the simulation
+                // x, y (as well as vx, vy) may have been reassigned 
+                blipElements
+                    .attr("transform", d => `translate(${d.xYanked ?? d.x}, ${d.y ?? d.y})   `)
+            });
+        }
+    </script>
+</head>
+
+<body onload="doSVG()">
+</body>
+
+</html>

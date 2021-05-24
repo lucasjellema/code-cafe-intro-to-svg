@@ -16,9 +16,9 @@
         // control difficulty of game with these settings
         // TODO: moving targets!
         // TODO: add poison pills (upon touch 0- game lost!) 
-        let playerRadius = 30    
-        let numberOfTargets = 5
-        const targetWidth = 8
+        let playerRadius = 10    
+        let numberOfTargets = 15
+        const targetWidth = 4
 
         function dissolveTargets() {
             const target = svg.selectAll(".target")
@@ -62,6 +62,7 @@
         function doSVG() {
             svg = d3.select("#svgContainer")
             addTargets()
+            preparePlayer()
             showScore()
             starttime = Date.now()
             showClock()
