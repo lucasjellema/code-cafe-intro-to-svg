@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script>
+        const width = 1000
+        const height = 600
+
+        const fontColor = "black"
+        const fontFamily = "sans-serif"
+        const fontSize = 13
+
+        let continuousDataRange = false
+        let oneTrack = false
+        let showBackgroundColors = true
+        let showHorizontalLines = false
+        let applyShapeColors = true
+
+        global = {
+            "width": width, "height": height
+            , fontColor: fontColor, fontFamily: fontFamily, fontSize: fontSize
+        }
+        valueScope = {
+            minValue: 50000,
+            maxValue: 1000000,
+            levels: [{ label: "> 600K", value: "big", backgroundColor: "#b6a0db", shapeColor: "#5a13d4" }
+                , { label: "> 300K", value: "medium plus", backgroundColor: "#b5d2eb", shapeColor: "#2381cf" }
+                , { label: "> 200K", value: "medium", backgroundColor: "#f7e5b7", shapeColor: "#ba9025" }
+                , { label: "< 200K", value: "small", backgroundColor: "#aef5c1", shapeColor: "#418754" }
+            ]
+        }
+
+        const cities = ["Amsterdam", "Groningen", "Rotterdam", "Eindhoven", "Den Haag", "Enschede", "Utrecht"]
+        const dataToOrder = cities.map((d, index) => {
+            return {
+                id: index
+                , label: d
+                , value: continuousDataRange ? valueScope.minValue : valueScope.levels[0].value
+                , valueIndex: 0
+                , color: "yellow"
+            }
+        })
+        const levelValues = valueScope.levels.map((level) => level.value)
+
+
+        const trackWidth = Math.min(global.width / dataToOrder.length, 100)
+        const dataRadius = trackWidth * 0.3
+        const textBelow = !oneTrack
+
+        const dragHandler = d3.drag()
+            .on("start", function (event, d) { d3.select(this).attr("stroke", "black") })
+            .on("drag", function (event, d) {
+                const index = dataToOrder.indexOf(d)
+                d.y = Math.min(Math.max(event.y, 0), global.height)
+                d.value = getValueFromY(d.y)
+                d3.select(this)
+                    .attr("transform", translateElement(d.id, d.y))
+                d3.select(this).select(".shape")
+
+                    .attr("style", function (d, index) { return `fill:${getShapeColor(d.value, d.color)}` })
+              //TODO  synchronizeDataToOrder()
+            })
+            .on("end", function (event, d) {
+                d3.select(this).attr("stroke", null)
+                d.y = getYFromValue(d.value)
+                d3.select(this).attr("transform", translateElement(d.id, d.y))
+
+            })
+
+        const translateElement = (index, y) => {
+            let translateString = `translate(${100 + 0.5 * trackWidth + (oneTrack == true ? 0 : index * trackWidth)},  ${y})`
+            return translateString
+        }
+
+        function getValueFromY(y) {
+            let value
+            const percentage = ((global.height - y) / global.height)
+            if (continuousDataRange) {
+                value = valueScope.minValue + (valueScope.maxValue - valueScope.minValue) * percentage
+            } else {
+                const levelCount = valueScope.levels.length
+                const levelIndex = Math.min(levelCount, Math.round(0.5 + levelCount * percentage))
+                value = valueScope.levels[levelCount - levelIndex].value
+            }
+            return value
+        }
+        function getYFromValue(value) {
+            let y
+            if (continuousDataRange) {
+                const percentage = (value - valueScope.minValue) / (valueScope.maxValue - valueScope.minValue)
+                y = (1 - percentage) * global.height
+            } else {
+                const levelCount = valueScope.levels.length
+                const index = valueScope.levels.map((level) => level.value).indexOf(value) + 0.5
+                const percentage = Math.max(0, index / levelCount)
+                y = percentage * global.height
+            }
+            return y
+        }
+        function getShapeColor(value, color) {
+            let shapeColor = color ?? "blue" // TODO hardcoded value
+            if (!continuousDataRange && applyShapeColors) {
+                // derive color from the value and shapeColor for the corresponding level
+                shapeColor = valueScope.levels[levelValues.indexOf(value)].shapeColor
+            }
+            return shapeColor
+        }
+
+        function displayHorizontalLines(groups, dataRadius) {
+            const horizontalLine = d3.line()([[1, 1], [2 * global.width, 1]])
+
+            groups.append("path")
+                .attr("d", horizontalLine)
+                .attr("stroke", "gray")
+                .style("stroke-dasharray", "1 2")
+                .style("stroke-width", 1)
+                .attr("transform", function (d, index) { return `translate(${-global.width}   , ${dataRadius})` })
+
+        }
+
+        function displayText(groups, dataRadius, textBelow) {
+            groups
+                .append("text")
+                .text(function (d, index) { return d.label + " "; })
+                .attr("x", textBelow ? dataRadius : 2.2 * dataRadius)
+                .attr("y", textBelow ? (2 * dataRadius + 2) : 0.9 * dataRadius)
+                .attr("text-anchor", textBelow ? "middle" : "start")
+                .attr("alignment-baseline", textBelow ? "before-edge" : "bottom")
+                .style("fill", global.fontColor)
+                .style("font-family", global.fontFamily)
+                .style("font-stretch", "extra-condensed")
+                .style("font-size", global.fontSize)
+        }
+        function displayBackgroundColors(dataRadius) {
+            // for all valueScope levels; create rectangle - no border, fill with level.backgroundColor
+            const areaHeight = global.height / valueScope.levels.length
+            const areas = global.svg.selectAll(".area")
+                .data(valueScope.levels, (d, index) => { console.log(`level index = ` + index); return index })
+                .enter()
+                .append("rect")
+                .attr("class", "area")
+                .attr('width', global.width)
+                .attr('height', areaHeight)
+                .attr('class', 'rect')
+                .attr("style", (d) => `fill:${d.backgroundColor}`)
+                .style("opacity", 0.6)
+                .attr("transform", function (d, index) { return `translate(0, ${index * areaHeight + dataRadius})` })
+        }
+        function displayAxis(dataRadius) {
+            if (continuousDataRange) {
+                var y = d3.scaleLinear()
+                    .domain([valueScope.minValue, valueScope.maxValue])         // This is what is written on the Axis
+                    .range([global.height, 0]);         // line from start y to finish y
+
+                // Draw the axis
+                global.svg
+                    .append("g")
+                    .attr("transform", `translate( 80, ${dataRadius})`)      // This controls the vertical position of the Axis
+                    .call(d3.axisLeft(y));
+            }
+            else {
+                // Create the scale
+                var axis = d3.scaleBand()
+                    .domain(valueScope.levels.map((level) => level.label).reverse())
+                    .range([global.height, 0])
+                //.padding([0.8])   
+                global.svg
+                    .append("g")
+                    .attr("transform", `translate(70,${dataRadius})`)      // This controls the vertical position of the Axis
+                    .call(d3.axisLeft(axis))
+                    .selectAll("text")
+                    .attr("transform", "translate(-30,-10)rotate(-35)")
+                    .style("text-anchor", "middle") // start, middle, end
+                    .style("font-size", 20)
+                    .style("fill", "#69a3b2")
+            }
+        }
+
+        function initialize() {
+            global.svg = d3.select("body").append("svg").attr("width", width).attr("height", height + 100)
+            global.svg.selectAll("*").remove(); // remove all SVGelements
+
+            if (!continuousDataRange && showBackgroundColors) {
+                displayBackgroundColors(dataRadius)
+            }
+
+            const groups = global.svg.selectAll(".target")
+                .data(dataToOrder, (d) => d.id)
+                .enter()
+                .append("g")
+                .attr("class", "target")
+                .attr("transform", function (d, index) { return translateElement(d.id, getYFromValue(d.value)) })
+                .call(dragHandler)
+
+            if (showHorizontalLines) {
+                displayHorizontalLines(groups, dataRadius)
+            }
+
+            groups
+                .append("circle")
+                .attr("r", dataRadius)
+                .attr("class", "shape")
+                .attr("cx", dataRadius)
+                .attr("cy", dataRadius)
+                .attr("style", function (d, index) { return `fill:${getShapeColor(d.value, d.color)}` })
+
+            displayText(groups, dataRadius, textBelow)
+            displayAxis(dataRadius)
+
+        }
+
+
+    </script>
+
+</head>
+
+<body onload="initialize()">
+</body>
+
+</html>
