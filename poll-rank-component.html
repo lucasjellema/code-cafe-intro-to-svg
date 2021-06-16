@@ -6,6 +6,7 @@
     <script>
         const width = 1000
         const height = 600
+        const horizontalMargin = 100
 
         const fontColor = "black"
         const fontFamily = "sans-serif"
@@ -59,12 +60,12 @@
             })
             .on("end", function (event, d) {
                 d3.select(this).attr("stroke", null)
-                d.y = getYFromValue(d.value)
-                d3.select(this).attr("transform", translateElement(d.id, d.y))
+                d.y = getYFromValue(d.value) // determine the y that corresponds to the value: this is relevant in case of discrete values; the y position is set to the vertical center of the discrete value area rather than the arbitrary position where the user ended the drag 
+                d3.select(this).attr("transform", translateElement(d.id, d.y)) // this final transformation is relevant in case of discrete values; it positions the element at the vertical center of the discrete value area, causing a slight jump compared to where the drag ended
             })
 
         const translateElement = (index, y) => {
-            let translateString = `translate(${100 + 0.5 * trackWidth + (oneTrack == true ? 0 : index * trackWidth)},  ${y})`
+            let translateString = `translate(${horizontalMargin + 0.5 * trackWidth + (oneTrack == true ? 0 : index * trackWidth)},  ${y})`
             return translateString
         }
 
@@ -149,7 +150,7 @@
 
                 global.svg
                     .append("g")
-                    .attr("transform", `translate( 80, ${dataRadius})`)      // This controls the vertical position of the Axis
+                    .attr("transform", `translate( ${horizontalMargin - 20}, ${dataRadius})`)      // This controls the vertical position of the Axis
                     .call(d3.axisLeft(y));
             }
             else {
@@ -158,10 +159,10 @@
                     .range([global.height, 0])
                 global.svg
                     .append("g")
-                    .attr("transform", `translate(70,${dataRadius})`)      // This controls the vertical position of the Axis
+                    .attr("transform", `translate(${horizontalMargin - 70},${dataRadius})`)      // This controls the position of the Axis
                     .call(d3.axisLeft(axis))
                     .selectAll("text")
-                    .attr("transform", "translate(-30,-10)rotate(-35)")
+                    .attr("transform", "translate(-30,-10) rotate(-35)")   // this controls the position and orientation of the text labels for the values on the axis
                     .style("text-anchor", "middle") // start, middle, end
                     .style("font-size", 20)
                     .style("fill", "#69a3b2")
@@ -175,7 +176,7 @@
             if (!continuousDataRange && showBackgroundColors) {
                 displayBackgroundColors(dataRadius)
             }
-
+            displayAxis(dataRadius)
             const groups = global.svg.selectAll(".target")
                 .data(dataToOrder, (d) => d.id)
                 .enter()
@@ -197,7 +198,7 @@
                 .attr("style", function (d, index) { return `fill:${getShapeColor(d.value, d.color)}` })
 
             displayText(groups, dataRadius, !oneTrack)
-            displayAxis(dataRadius)
+
         }
 
         function initialize() {
