@@ -11,7 +11,7 @@
         const fontFamily = "sans-serif"
         const fontSize = 13
 
-        let continuousDataRange = false
+        let continuousDataRange = true
         let oneTrack = false
         let showBackgroundColors = true
         let showHorizontalLines = false
@@ -42,11 +42,9 @@
             }
         })
         const levelValues = valueScope.levels.map((level) => level.value)
-
-
         const trackWidth = Math.min(global.width / dataToOrder.length, 100)
         const dataRadius = trackWidth * 0.3
-        const textBelow = !oneTrack
+   
 
         const dragHandler = d3.drag()
             .on("start", function (event, d) { d3.select(this).attr("stroke", "black") })
@@ -57,15 +55,12 @@
                 d3.select(this)
                     .attr("transform", translateElement(d.id, d.y))
                 d3.select(this).select(".shape")
-
                     .attr("style", function (d, index) { return `fill:${getShapeColor(d.value, d.color)}` })
-              //TODO  synchronizeDataToOrder()
             })
             .on("end", function (event, d) {
                 d3.select(this).attr("stroke", null)
                 d.y = getYFromValue(d.value)
                 d3.select(this).attr("transform", translateElement(d.id, d.y))
-
             })
 
         const translateElement = (index, y) => {
@@ -102,21 +97,20 @@
             let shapeColor = color ?? "blue" // TODO hardcoded value
             if (!continuousDataRange && applyShapeColors) {
                 // derive color from the value and shapeColor for the corresponding level
-                shapeColor = valueScope.levels[levelValues.indexOf(value)].shapeColor
+                const colorLevelIndex = levelValues.indexOf(value)
+                shapeColor = valueScope.levels[colorLevelIndex==-1?0:colorLevelIndex].shapeColor
             }
             return shapeColor
         }
 
         function displayHorizontalLines(groups, dataRadius) {
             const horizontalLine = d3.line()([[1, 1], [2 * global.width, 1]])
-
             groups.append("path")
                 .attr("d", horizontalLine)
                 .attr("stroke", "gray")
                 .style("stroke-dasharray", "1 2")
                 .style("stroke-width", 1)
                 .attr("transform", function (d, index) { return `translate(${-global.width}   , ${dataRadius})` })
-
         }
 
         function displayText(groups, dataRadius, textBelow) {
@@ -153,18 +147,15 @@
                     .domain([valueScope.minValue, valueScope.maxValue])         // This is what is written on the Axis
                     .range([global.height, 0]);         // line from start y to finish y
 
-                // Draw the axis
                 global.svg
                     .append("g")
                     .attr("transform", `translate( 80, ${dataRadius})`)      // This controls the vertical position of the Axis
                     .call(d3.axisLeft(y));
             }
             else {
-                // Create the scale
                 var axis = d3.scaleBand()
                     .domain(valueScope.levels.map((level) => level.label).reverse())
                     .range([global.height, 0])
-                //.padding([0.8])   
                 global.svg
                     .append("g")
                     .attr("transform", `translate(70,${dataRadius})`)      // This controls the vertical position of the Axis
@@ -177,8 +168,8 @@
             }
         }
 
-        function initialize() {
-            global.svg = d3.select("body").append("svg").attr("width", width).attr("height", height + 100)
+        function draw() {
+            
             global.svg.selectAll("*").remove(); // remove all SVGelements
 
             if (!continuousDataRange && showBackgroundColors) {
@@ -205,9 +196,30 @@
                 .attr("cy", dataRadius)
                 .attr("style", function (d, index) { return `fill:${getShapeColor(d.value, d.color)}` })
 
-            displayText(groups, dataRadius, textBelow)
+            displayText(groups, dataRadius, !oneTrack)
             displayAxis(dataRadius)
+        }
 
+        function initialize() {
+            const div = document.createElement("div")
+            document.body.appendChild(div)
+            const html = `
+            <label for="oneTrackCheck">One Track?</label><input id="oneTrackCheck" type="checkbox" ${oneTrack?"checked":""}></input>
+            <label for="continuousCheck">Continuous?</label><input id="continuousCheck" type="checkbox" ${continuousDataRange?"checked":""}></input>
+            <label for="showHorizontalLinesCheck">Show Horizontal Lines?</label><input id="showHorizontalLinesCheck" type="checkbox" ${showHorizontalLines?"checked":""}></input>
+            <label for="showBackgroundColorsCheck">Show Background Colors?</label><input id="showBackgroundColorsCheck" type="checkbox" ${showBackgroundColors?"checked":""}></input>
+            <label for="applyShapeColorsCheck">Apply Shape Colors?</label><input id="applyShapeColorsCheck" type="checkbox" ${applyShapeColors?"checked":""}></input>
+            `
+
+            div.innerHTML = html
+            document.getElementById("oneTrackCheck").addEventListener("change" , (e)=> {oneTrack = e.target.checked; draw()})
+            document.getElementById("continuousCheck").addEventListener("change" , (e)=> {continuousDataRange = e.target.checked; draw()})
+            document.getElementById("showBackgroundColorsCheck").addEventListener("change" , (e)=> {showBackgroundColors = e.target.checked; draw()})
+            document.getElementById("showHorizontalLinesCheck").addEventListener("change" , (e)=> {showHorizontalLines = e.target.checked; draw()})
+            document.getElementById("applyShapeColorsCheck").addEventListener("change" , (e)=> {applyShapeColors = e.target.checked; draw()})
+            
+            global.svg = d3.select("body").append("svg").attr("width", width).attr("height", height + 100)
+            draw()
         }
 
 
